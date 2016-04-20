@@ -8,12 +8,28 @@
         CONSTANT TXD,      01
         CONSTANT RXD,      01
 
+        CONSTANT TXDIDLE, 00
+        CONSTANT TXDSTART, 01
+        CONSTANT TXDWORK, 02
+        CONSTANT TXDSTOP, 03
+        CONSTANT RXDIDLE, 00
+        CONSTANT RXDSTART, 01
+        CONSTANT RXDWORK, 02
+
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
         NAMEREG s0, IOR
         NAMEREG s1, TMP
         NAMEREG s2, CNTH
         NAMEREG s3, CNTL
+        NAMEREG s4, RXDSTATE
+        NAMEREG s5, TXDSTATE
+        NAMEREG s6, AUX
+        NAMEREG s7, RXDCNTR
+        NAMEREG s8, TXDCNTR
+        NAMEREG s9, SAVEDBITS
+        NAMEREG s10, SENDBUF
+        NAMEREG s11, READBYTE
 
 ; alle acht Register s8 bis sF stehen der Main-Funktion zur Verfuegung
 
@@ -54,16 +70,107 @@ BLINK0: RETURN
 
 ; --------------------------------------------------------------------------------------------
 
-; Subroutine, die Daten ueber das serielle Eingangssignal RXD abtastet,
-; zu einem Byte zusammensetzt, entschidet, ob das empfangene Byte
-; ein Buchstabe oder eine Ziffer ist, und ggf. das Byte seriell
-; ueber das serielle Ausgangssignal TXD ausgibt
-;
-; in dieser Version ist eine einfache Echo-Funktion implementiert
-COMM:   
-        INPUT  IOR,  COM_Port ; COM-Port einlesen
-        AND    IOR,  RXD      ; Zustand von RXD ermitteln
-        OUTPUT IOR,  COM_Port ; TXD ausgeben
+; Subroutine that handles UART data reception
+COMM_RECEIVE:
+        COMPARE RXDSTATE, RXDSTART
+        JUMP Z, RXD_START
+        COMPARE RXDSTATE, RXDWORK
+        JUMP Z, RXD_WORK
+RXD_IDLE:
+        INPUT IOR, COM_Port
+        AND IOR, RXD
+        COMPARE IOR, 01
+        JUMP Z, RXD_RET
+        LOAD RXDSTATE, RXDSTART
+        LOAD RXDCNTR, 08
+        JUMP RXD_RET
+RXD_START:
+        SUB RXDCNTR, 01
+        JUMP NZ, RXD_RET
+        INPUT IOR, COM_Port
+        AND IOR, RXD
+        LOAD RXDSTATE, RXDIDLE
+        COMPARE IOR, 01
+        JUMP Z, RXD_RET
+        LOAD RXDSTATE, RXDWORK
+        LOAD RXDCNTR, 10
+        LOAD SAVEDBITS, 08
+        JUMP RXD_RET
+RXD_WORK:
+        SUB RXDCNTR, 01
+        JUMP NZ, RXD_RET
+        LOAD RXDCNTR, 10
+        INPUT IOR, COM_Port
+        AND IOR, RXD
+        RR IOR
+        OR READBYTE, IOR
+        SUB SAVEDBITS, 01
+        JUMP NZ, RXD_RET
+CHAR_CHECK:
+        COMPARE READBYTE, ASCII0
+        JUMP C, CHAR_INVALID
+        COMPARE READBYTE, ASCII9
+        JUMP C, CHAR_VALID
+        COMPARE READBYTE, ASCIIA
+        JUMP C, CHAR_INVALID
+        COMPARE READBYTE, ASCIIZ
+        JUMP C, CHAR_VALID
+        COMPARE READBYTE, ASCIIa
+        JUMP C, CHAR_INVALID
+        COMPARE READBYTE, ASCIIz
+        JUMP C, CHAR_VALID
+CHAR_INVALID:
+        LOAD RXDSTATE, RXDIDLE
+        JUMP RXD_RET
+CHAR_VALID:
+        LOAD RXDSTATE, RXDIDLE
+        LOAD SENDBUF, READBYTE
+        LOAD TXDSTATE, TXDSTART
+        LOAD TXDCNTR, 10
+RXD_RET:
+        RETURN
+
+; --------------------------------------------------------------------------------------------
+
+; Subroutine that handles UART data sending
+COMM_SEND:
+        COMPARE TXDSTATE, TXDSTART
+        JUMP Z, TXD_START
+        COMPARE TXDSTATE, TXDWORK
+        JUMP Z, TXD_WORK
+        COMPARE TXDSTATE, TXDSTOP
+        JUMP Z, TXD_STOP
+TXD_IDLE:
+        LOAD AUX, 01
+        OUTPUT AUX, TXD
+        JUMP TXD_RET
+TXD_START:
+        LOAD AUX, 00
+        OUTPUT AUX, TXD
+        SUB TXDCNTR, 01
+        JUMP NZ, TXD_RET
+        LOAD TXDCNTR, 10
+        LOAD TXDSTATE, TXDWORK
+TXD_WORK:
+        OUTPUT SENDBUF, TXD
+        SUB TXDCNTR, 01
+        JUMP NZ, TXD_RET
+        RR SENDBUF
+        LOAD TXDCNTR, 10
+        SUB SENTBITS, 01
+        JUMP Z, TXD_WORK_CHANGESTATE
+        JUMP TXD_RET
+TXD_WORK_CHANGESTATE:
+        LOAD TXDSTATE, TXDSTOP
+        JUMP TXD_RET
+TXD_STOP:
+        LOAD AUX, 01
+        OUTPUT AUX, TXD
+        SUB TXDCNTR, 01
+        JUMP NZ, TXD_RET
+        LOAD TXDSTATE, TXDIDLE
+        LOAD TXDCNTR, 10
+TXD_RET:
         RETURN
 
 ; --------------------------------------------------------------------------------------------
@@ -72,7 +179,8 @@ COMM:
 ; Interrupt-Service-Routine
 ISR:    CALL    BNT0LED0
         CALL    BLINK
-        CALL    COMM
+        CALL    COMM_RECEIVE
+        CALL    COMM_SEND
         RETURNI ENABLE
 
 ; --------------------------------------------------------------------------------------------
