@@ -16,6 +16,13 @@
         CONSTANT RXDSTART, 01
         CONSTANT RXDWORK, 02
 
+        CONSTANT ASCII0, 30
+        CONSTANT ASCII9, 39
+        CONSTANT ASCIIA, 42
+        CONSTANT ASCIIZ, 5A
+        CONSTANT ASCIIa, 61
+        CONSTANT ASCIIz, 79
+
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
         NAMEREG s0, IOR
@@ -28,8 +35,9 @@
         NAMEREG s7, RXDCNTR
         NAMEREG s8, TXDCNTR
         NAMEREG s9, SAVEDBITS
-        NAMEREG s10, SENDBUF
-        NAMEREG s11, READBYTE
+        NAMEREG sA, SENDBUF
+        NAMEREG sB, READBYTE
+        NAMEREG sC, SENTBITS
 
 ; alle acht Register s8 bis sF stehen der Main-Funktion zur Verfuegung
 
