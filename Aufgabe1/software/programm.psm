@@ -85,36 +85,42 @@ COMM_RECEIVE:
         COMPARE RXDSTATE, RXDWORK
         JUMP Z, RXD_WORK
 RXD_IDLE:
-        INPUT IOR, COM_Port
+        INPUT IOR, COM_Port		; Read data from COM port
         AND IOR, RXD
-        COMPARE IOR, 01
-        JUMP Z, RXD_RET
-        LOAD RXDSTATE, RXDSTART
+        COMPARE IOR, 00
+        JUMP NZ, RXD_RET
+        LOAD RXDSTATE, RXDSTART	; If data is equal to 0b0 (start bit), go to start state
         LOAD RXDCNTR, 08
         JUMP RXD_RET
 RXD_START:
         SUB RXDCNTR, 01
-        JUMP NZ, RXD_RET
-        INPUT IOR, COM_Port
+        JUMP NZ, RXD_RET		; Wait for 8 clock periods
+        INPUT IOR, COM_Port		; Read data from COM port
         AND IOR, RXD
-        LOAD RXDSTATE, RXDIDLE
-        COMPARE IOR, 01
+        LOAD RXDSTATE, RXDIDLE	; If data is different to 0b0 (start bit), return to idle state
+        COMPARE IOR, 00
         JUMP Z, RXD_RET
-        LOAD RXDSTATE, RXDWORK
+        LOAD RXDSTATE, RXDWORK	; If data is equal to 0b0 (start bit), go to work state
         LOAD RXDCNTR, 10
         LOAD SAVEDBITS, 08
+		;LOAD READBYTE, 00
         JUMP RXD_RET
 RXD_WORK:
         SUB RXDCNTR, 01
-        JUMP NZ, RXD_RET
+        JUMP NZ, RXD_RET		; Wait for 16 clock periods
         LOAD RXDCNTR, 10
-        INPUT IOR, COM_Port
-        AND IOR, RXD
-        RR IOR
-        OR READBYTE, IOR
-        SUB SAVEDBITS, 01
-        JUMP NZ, RXD_RET
+        INPUT IOR, COM_Port		; Read data from COM port
+        AND IOR, RXD			; Keep only the LSB
+		OR READBYTE, IOR		; Copy read bit into READBYTE's LSB
+		RR READBYTE				; Rotate READBYTE to the right and put LSB in MSB
+		SUB SAVEDBITS, 01
+        JUMP NZ, RXD_RET		; If all 8 bits have been read continue with check
 CHAR_CHECK:
+		; TODO: works with hardcoded character but fails to read character from RXD... something wrong in RXD_WORK?
+		LOAD READBYTE, 61
+		JUMP CHAR_VALID
+		; If READBYTE is an ASCII number or letter, go to CHAR_VALID.
+		; Otherwise, go to CHAR_INVALID
         COMPARE READBYTE, ASCII0
         JUMP C, CHAR_INVALID
         COMPARE READBYTE, ASCII9
@@ -128,12 +134,12 @@ CHAR_CHECK:
         COMPARE READBYTE, ASCIIz
         JUMP C, CHAR_VALID
 CHAR_INVALID:
-        LOAD RXDSTATE, RXDIDLE
+        LOAD RXDSTATE, RXDIDLE	; Go to reception idle state
         JUMP RXD_RET
 CHAR_VALID:
-        LOAD RXDSTATE, RXDIDLE
-        LOAD SENDBUF, READBYTE
-        LOAD TXDSTATE, TXDSTART
+        LOAD RXDSTATE, RXDIDLE	; Go to reception idle state
+        LOAD SENDBUF, READBYTE	; Copy read byte into SENDBUF
+        LOAD TXDSTATE, TXDSTART	; Go to transmission start state
         LOAD TXDCNTR, 10
 RXD_RET:
         RETURN
@@ -150,33 +156,33 @@ COMM_SEND:
         JUMP Z, TXD_STOP
 TXD_IDLE:
         LOAD AUX, 01
-        OUTPUT AUX, TXD
+        OUTPUT AUX, TXD			; Output 0b1
         JUMP TXD_RET
 TXD_START:
         LOAD AUX, 00
-        OUTPUT AUX, TXD
+        OUTPUT AUX, TXD			; Output 0b0 (start bit)
         SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET
+        JUMP NZ, TXD_RET		; Repeat for 16 clock periods
         LOAD TXDCNTR, 10
         LOAD SENTBITS, 08
-        LOAD TXDSTATE, TXDWORK
+        LOAD TXDSTATE, TXDWORK	; Go to work state
 TXD_WORK:
-        OUTPUT SENDBUF, TXD
+        OUTPUT SENDBUF, TXD		; Write SENDBUF into TXD register
         SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET
-        RR SENDBUF
+        JUMP NZ, TXD_RET		; Repeat for 16 clock periods
+        SR0 SENDBUF				; Rotate SENDBUF to the right (send from LSB to MSB)
         LOAD TXDCNTR, 10
-        SUB SENTBITS, 01
+        SUB SENTBITS, 01		; Repeat all above for each bit in SENDBUF
         JUMP Z, TXD_WORK_CHANGESTATE
         JUMP TXD_RET
 TXD_WORK_CHANGESTATE:
-        LOAD TXDSTATE, TXDSTOP
+        LOAD TXDSTATE, TXDSTOP	; If all 8 bits have been sent, go to stop state
         JUMP TXD_RET
 TXD_STOP:
         LOAD AUX, 01
-        OUTPUT AUX, TXD
+        OUTPUT AUX, TXD			; Output 0b1 (stop bit)
         SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET
+        JUMP NZ, TXD_RET		; Repeat for 16 clock periods
         LOAD TXDSTATE, TXDIDLE
         LOAD TXDCNTR, 10
 TXD_RET:
