@@ -103,7 +103,7 @@ RXD_START:
         LOAD RXDSTATE, RXDWORK          ; If data is equal to 0b0 (start bit), go to work state
         LOAD RXDCNTR, 10
         LOAD SAVEDBITS, 08
-                LOAD READBYTE, 00
+        LOAD READBYTE, 00
         JUMP RXD_RET
 RXD_WORK:
         SUB RXDCNTR, 01
@@ -111,13 +111,13 @@ RXD_WORK:
         LOAD RXDCNTR, 10
         INPUT IOR, COM_Port             ; Read data from COM port
         AND IOR, RXD                    ; Keep only the LSB
-                OR READBYTE, IOR        ; Copy read bit into READBYTE's LSB
-                RR READBYTE             ; Rotate READBYTE to the right and put LSB in MSB
-                SUB SAVEDBITS, 01
+        OR READBYTE, IOR                ; Copy read bit into READBYTE's LSB
+        RR READBYTE                     ; Rotate READBYTE to the right and put LSB in MSB
+        SUB SAVEDBITS, 01
         JUMP NZ, RXD_RET                ; If all 8 bits have been read continue with check
 CHAR_CHECK:
-                ; If READBYTE is an ASCII number or letter, go to CHAR_VALID.
-                ; Otherwise, go to CHAR_INVALID
+        ; If READBYTE is an ASCII number or letter, go to CHAR_VALID.
+        ; Otherwise, go to CHAR_INVALID
         COMPARE READBYTE, ASCII0
         JUMP C, CHAR_INVALID
         COMPARE READBYTE, ASCII9
@@ -162,7 +162,7 @@ TXD_START:
         JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
         LOAD TXDCNTR, 10
         LOAD SENTBITS, 08
-        LOAD TXDSTATE, TXDWORK  ; Go to work state
+        LOAD TXDSTATE, TXDWORK          ; Go to work state
 TXD_WORK:
         OUTPUT SENDBUF, TXD             ; Write SENDBUF into TXD register
         SUB TXDCNTR, 01
@@ -173,7 +173,7 @@ TXD_WORK:
         JUMP Z, TXD_WORK_CHANGESTATE
         JUMP TXD_RET
 TXD_WORK_CHANGESTATE:
-        LOAD TXDSTATE, TXDSTOP  ; If all 8 bits have been sent, go to stop state
+        LOAD TXDSTATE, TXDSTOP          ; If all 8 bits have been sent, go to stop state
         JUMP TXD_RET
 TXD_STOP:
         LOAD AUX, 01
