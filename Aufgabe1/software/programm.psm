@@ -17,11 +17,11 @@
         CONSTANT RXDWORK,  02
 
         CONSTANT ASCII0,   30
-        CONSTANT ASCII9,   39
-        CONSTANT ASCIIA,   42
-        CONSTANT ASCIIZ,   5A
+        CONSTANT ASCII9,   3A	; '9' + 1
+        CONSTANT ASCIIA,   41
+        CONSTANT ASCIIZ,   5B	; 'Z' + 1
         CONSTANT ASCIIa,   61
-        CONSTANT ASCIIz,   79
+        CONSTANT ASCIIz,   7B	; 'z' + 1
 
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
