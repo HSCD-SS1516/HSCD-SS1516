@@ -146,6 +146,8 @@ CHAR_INVALID:
         JUMP RXD_RET
 CHAR_VALID:
         ; TODO: should we expect a start bit for every byte or one for every block?
+        ; FIXME: if more than 16 bytes are sent the program sends back all of them, not just 16*n
+        ; POSSIBLE SOLUTION: use different BYTECNT for RXD and TXD and also different ADDRX (not enough registers)
         LOAD RXDSTATE, RXDIDLE          ; Go to reception idle state
         ADD BYTECNT, 01
         COMPARE BYTECNT, BLOCKLEN
