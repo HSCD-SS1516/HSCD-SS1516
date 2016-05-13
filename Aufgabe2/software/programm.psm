@@ -27,7 +27,7 @@
         CONSTANT ASCIIa,   61
         CONSTANT ASCIIz,   7B	; 'z' + 1
 
-        CONSTANT BLOCKLEN, 16
+        CONSTANT BLOCKLEN, 10
 
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
@@ -57,6 +57,7 @@
 ; Hauptfunktion
 start:  AND    CNTH, 00   ; Initialisierung der Zaehlers ...
         AND    CNTL, 00   ; in der ISR
+        LOAD   BYTECNT, 00
         ENABLE INTERRUPT
 loop:   ; do nothing
         JUMP loop
@@ -148,11 +149,9 @@ CHAR_VALID:
         LOAD RXDSTATE, RXDIDLE          ; Go to reception idle state
         ADD BYTECNT, 01
         COMPARE BYTECNT, BLOCKLEN
-        JUMP Z, STORE_CHAR
-        ;LOAD BYTECNT, 00
+        JUMP NZ, STORE_CHAR
         LOAD TXDSTATE, TXDSTART         ; Go to transmission start state
         LOAD TXDCNTR, 10
-        ;LOAD BYTE_TXDCNT, BLOCKLEN
 STORE_CHAR:
         ; Store read byte in RAM and increment current address
         OUTPUT ADDR0, RAM_A0_Port
