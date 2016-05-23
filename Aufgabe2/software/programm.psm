@@ -29,30 +29,36 @@
 
         CONSTANT BYTECNT_RXD_ADDR, 00
         CONSTANT BYTECNT_TXD_ADDR, 01
+        CONSTANT ADDRH_RXD_ADDR, 02
+        CONSTANT ADDRL_RXD_ADDR, 03
+        CONSTANT ADDRH_TXD_ADDR, 04
+        CONSTANT ADDRL_TXD_ADDR, 05
 
         CONSTANT BLOCKLEN, 10
 
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
-        NAMEREG s0, CNTH
-        NAMEREG s1, CNTL
         ; Temporary variables
-        NAMEREG s2, AUX
-        NAMEREG s3, ADDR0
-        NAMEREG s4, ADDR1
-        NAMEREG s5, TMP
-        NAMEREG s6, IOR
-        NAMEREG s7, BYTECNT
+        NAMEREG s0, ADDRL
+        NAMEREG s1, ADDRH
+        NAMEREG s2, TMP
+        NAMEREG s3, IOR
+        NAMEREG s4, BYTECNT
+        ; BLINK variables
+        NAMEREG s5, CNTH
+        NAMEREG s6, CNTL
         ; RXD variables
-        NAMEREG s8, RXDSTATE
-        NAMEREG s9, RXDCNTR
-        NAMEREG sA, SAVEDBITS
-        NAMEREG sB, READBYTE
+        NAMEREG s7, RXDSTATE
+        NAMEREG s8, RXDCNTR
+        NAMEREG s9, SAVEDBITS
+        NAMEREG sA, READBYTE
         ; TXD variables
-        NAMEREG sC, TXDSTATE
-        NAMEREG sD, TXDCNTR
-        NAMEREG sE, SENTBITS
-        NAMEREG sF, SENDBUF
+        NAMEREG sB, TXDSTATE
+        NAMEREG sC, TXDCNTR
+        NAMEREG sD, SENTBITS
+        NAMEREG sE, SENDBUF
+        ; Shared variables
+        NAMEREG sF, AVAILABLE_BLOCKS
 
 ; alle acht Register s8 bis sF stehen der Main-Funktion zur Verfuegung
 
@@ -62,9 +68,8 @@
 ; Hauptfunktion
 start:  AND    CNTH, 00   ; Initialisierung der Zaehlers ...
         AND    CNTL, 00   ; in der ISR
-        LOAD   BYTECNT, 00
-        LOAD   ADDR0, 00
-        LOAD   ADDR1, 01
+        LOAD   ADDRL, 00
+        LOAD   ADDRH, 01
         ENABLE INTERRUPT
 loop:   ; do nothing
         JUMP loop
@@ -180,33 +185,33 @@ CHAR_VALID:
 STORE_CHAR:
         ; Store read byte in RAM and increment current address for RXD
         ; BEGIN
-        ;       Load ADDR_RXD (00..0 & ADDR1-0_RXD_ADDR) from RAM
+        ;       Load ADDR_RXD (00..0 & ADDR_RXD_ADDR) from RAM
         ;       BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, ADDR1_RXD_ADDR
+        LOAD TMP, ADDRH_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        INPUT ADDR1, RAM_D_Port
-        LOAD TMP, ADDR0_RXD_ADDR
-        INPUT ADDR0, RAM_D_Port
+        INPUT ADDRH, RAM_D_Port
+        LOAD TMP, ADDRL_RXD_ADDR
+        INPUT ADDRL, RAM_D_Port
         ;       END
-        OUTPUT ADDR0, RAM_A0_Port
-        OUTPUT ADDR1, RAM_A1_Port
+        OUTPUT ADDRL, RAM_A0_Port
+        OUTPUT ADDRH, RAM_A1_Port
         OUTPUT READBYTE, RAM_D_Port
-        ADD ADDR0, 01
+        ADD ADDRL, 01
         JUMP NC, RXD_RET
-        ADD ADDR1, 01
+        ADD ADDRH, 01
         JUMP NZ, RXD_RET                ; Check for overflow
-        ADD ADDR1, 01
+        ADD ADDRH, 01
         ;       Store ADDR_RXD variables back in RAM
         ;       BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, ADDR1_RXD_ADDR
+        LOAD TMP, ADDRH_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        OUTPUT ADDR1, RAM_D_Port
-        LOAD TMP, ADDR0_RXD_ADDR
-        OUTPUT ADDR0, RAM_D_Port
+        OUTPUT ADDRH, RAM_D_Port
+        LOAD TMP, ADDRL_RXD_ADDR
+        OUTPUT ADDRL, RAM_D_Port
         ;       END
         ; END
 RXD_RET:
@@ -223,8 +228,8 @@ COMM_SEND:
         COMPARE TXDSTATE, TXDSTOP
         JUMP Z, TXD_STOP
 TXD_IDLE:
-        LOAD AUX, 01
-        OUTPUT AUX, TXD                 ; Output 0b1
+        LOAD TMP, 01
+        OUTPUT TMP, TXD                 ; Output 0b1
         COMPARE AVAILABLE_BLOCKS, 00
         JUMP Z, TXD_RET                 ; If there are no new blocks available stay in TXD_IDLE
         ; Setup TXD process data
@@ -244,22 +249,22 @@ TXD_IDLE:
         ;       BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, ADDR1_RXD_ADDR
+        LOAD TMP, ADDRH_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        INPUT ADDR1, RAM_D_Port
-        LOAD TMP, ADDR0_RXD_ADDR
-        INPUT ADDR0, RAM_D_Port
-        LOAD TMP, ADDR1_TXD_ADDR
+        INPUT ADDRH, RAM_D_Port
+        LOAD TMP, ADDRL_RXD_ADDR
+        INPUT ADDRL, RAM_D_Port
+        LOAD TMP, ADDRH_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        OUTPUT ADDR1, RAM_D_Port
-        LOAD TMP, ADDR0_TXD_ADDR
+        OUTPUT ADDRH, RAM_D_Port
+        LOAD TMP, ADDRL_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        OUTPUT ADDR0, RAM_D_Port
+        OUTPUT ADDRL, RAM_D_Port
         ;       END
         ; END
 TXD_START:
-        LOAD AUX, 00
-        OUTPUT AUX, TXD                 ; Output 0b0 (start bit)
+        LOAD TMP, 00
+        OUTPUT TMP, TXD                 ; Output 0b0 (start bit)
         SUB TXDCNTR, 01
         JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
         LOAD TXDCNTR, 10
@@ -272,24 +277,24 @@ TXD_START:
         OUTPUT TMP, RAM_A0_Port
         INPUT BYTECNT, RAM_D_Port
         ; END
-        ;       Load address (ADDR1 & ADDR0) - BYTECNT_TXD into SENDBUF
+        ;       Load address (ADDRH & ADDRL) - BYTECNT_TXD into SENDBUF
         ;       BEGIN
-        ;               Load ADDR_TXD (00..0 & ADDR1-0_TXD_ADDR) from RAM
+        ;               Load ADDR_TXD (00..0 & ADDR_TXD_ADDR) from RAM
         ;               BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, ADDR1_TXD_ADDR
+        LOAD TMP, ADDRH_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-        INPUT ADDR1, RAM_D_Port
-        LOAD TMP, ADDR0_TXD_ADDR
-        INPUT ADDR0, RAM_D_Port
+        INPUT ADDRH, RAM_D_Port
+        LOAD TMP, ADDRL_TXD_ADDR
+        INPUT ADDRL, RAM_D_Port
         ;               END
-        LOAD TMP, ADDR0
+        LOAD TMP, ADDRL
         SUB TMP, BYTECNT
         OUTPUT TMP, RAM_A0_Port
-        OUTPUT ADDR1, RAM_A1_Port
+        OUTPUT ADDRH, RAM_A1_Port
         JUMP NC, LOAD_CHAR
-        LOAD TMP, ADDR1
+        LOAD TMP, ADDRH
         SUB TMP, 01
         OUTPUT TMP, RAM_A1_Port
         ;       END
@@ -310,8 +315,8 @@ TXD_WORK_CHANGESTATE:
         LOAD TXDSTATE, TXDSTOP          ; If all 8 bits have been sent, go to stop state
         JUMP TXD_RET
 TXD_STOP:
-        LOAD AUX, 01
-        OUTPUT AUX, TXD                 ; Output 0b1 (stop bit)
+        LOAD TMP, 01
+        OUTPUT TMP, TXD                 ; Output 0b1 (stop bit)
         SUB TXDCNTR, 01
         JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
         LOAD TXDCNTR, 10
