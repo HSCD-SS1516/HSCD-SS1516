@@ -21,11 +21,11 @@
         CONSTANT RXDWORK,  02
 
         CONSTANT ASCII0,   30
-        CONSTANT ASCII9,   3A	; '9' + 1
+        CONSTANT ASCII9,   3A        ; '9' + 1
         CONSTANT ASCIIA,   41
-        CONSTANT ASCIIZ,   5B	; 'Z' + 1
+        CONSTANT ASCIIZ,   5B        ; 'Z' + 1
         CONSTANT ASCIIa,   61
-        CONSTANT ASCIIz,   7B	; 'z' + 1
+        CONSTANT ASCIIz,   7B        ; 'z' + 1
 
         CONSTANT BYTECNT_RXD_ADDR, 00
         CONSTANT BYTECNT_TXD_ADDR, 01
@@ -120,14 +120,14 @@ RXD_START:
         LOAD RXDCNTR, 10
         LOAD SAVEDBITS, 08
         LOAD READBYTE, 00
-		; Set BYTECNT_RXD to 00
-		; BEGIN
+        ; Set BYTECNT_RXD to 00
+        ; BEGIN
         LOAD TMP, BYTECNT_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-		LOAD TMP, 00
-		OUTPUT TMP, RAM_A1_Port
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
         OUTPUT TMP, RAM_D_Port
-		; END
+        ; END
         JUMP RXD_RET
 RXD_WORK:
         SUB RXDCNTR, 01
@@ -162,44 +162,44 @@ CHAR_VALID:
         ; FIXME: if more than 16 bytes are sent the program sends back all of them, not just 16*n
         LOAD RXDSTATE, RXDIDLE          ; Go to reception idle state
         ; Retrieve BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
-		; BEGIN
+        ; BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
         LOAD TMP, BYTECNT_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
         INPUT BYTECNT, RAM_D_Port
-		; END
+        ; END
         ADD BYTECNT, 01                 ; Increment BYTECNT_RXD
         OUTPUT BYTECNT, RAM_D_Port      ; Store BYTECNT_RXD back in RAM
         COMPARE BYTECNT, BLOCKLEN
         JUMP NZ, STORE_CHAR
-		; Setup TXD process data
-		; BEGIN
-		; FIXME: problem when RXD process finishes BEFORE TXD?
+        ; Setup TXD process data
+        ; BEGIN
+        ; FIXME: problem when RXD process finishes BEFORE TXD?
         LOAD TXDSTATE, TXDSTART         ; Go to transmission start state
         LOAD TXDCNTR, 10
-		;     Set BYTECNT_TXD to BLOCKLEN
-		;     BEGIN
-		LOAD TMP, 00
-		OUTPUT TMP, RAM_A1_Port
+        ;     Set BYTECNT_TXD to BLOCKLEN
+        ;     BEGIN
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
         LOAD TMP, BYTECNT_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
-		LOAD TMP, BLOCKLEN
+                LOAD TMP, BLOCKLEN
         OUTPUT TMP, RAM_D_Port
-		;     END
-		; END
+        ;     END
+        ; END
 STORE_CHAR:
         ; Store read byte in RAM and increment current address
-		; BEGIN
+                ; BEGIN
         OUTPUT ADDR0, RAM_A0_Port
         OUTPUT ADDR1, RAM_A1_Port
         OUTPUT READBYTE, RAM_D_Port
         ADD ADDR0, 01
         JUMP NC, RXD_RET
         ADD ADDR1, 01
-		JUMP NZ, RXD_RET                ; Check for overflow
-		ADD ADDR1, 01
-		; END
+        JUMP NZ, RXD_RET                ; Check for overflow
+        ADD ADDR1, 01
+        ; END
 RXD_RET:
         RETURN
 
@@ -225,17 +225,17 @@ TXD_START:
         LOAD TXDCNTR, 10
         LOAD SENTBITS, 08
         ; Retrieve BYTECNT_TXD (00..0 & BYTECNT_TXD_ADDR) from RAM into BYTECNT
-		; BEGIN
+        ; BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
         LOAD TMP, BYTECNT_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
         INPUT BYTECNT, RAM_D_Port
-		; END
+        ; END
         ; Load read byte from RAM into SENDBUF
-		; BEGIN
+        ; BEGIN
         ;     Load address (ADDR1 & ADDR0) - BYTECNT_TXD
-		;     BEGIN
+        ;     BEGIN
         LOAD TMP, ADDR0
         SUB TMP, BYTECNT
         OUTPUT TMP, RAM_A0_Port
@@ -244,10 +244,10 @@ TXD_START:
         LOAD TMP, ADDR1
         SUB TMP, 01
         OUTPUT TMP, RAM_A1_Port
-		;     END
+        ;     END
 LOAD_CHAR:
         INPUT SENDBUF, RAM_D_Port
-		; END
+        ; END
         LOAD TXDSTATE, TXDWORK          ; Go to work state
 TXD_WORK:
         OUTPUT SENDBUF, TXD             ; Write SENDBUF into TXD register
@@ -267,14 +267,14 @@ TXD_STOP:
         SUB TXDCNTR, 01
         JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
         LOAD TXDCNTR, 10
-		; Retrieve BYTECNT_TXD (00..0 & BYTECNT_TXD_ADDR) from RAM into BYTECNT
-		; BEGIN
+        ; Retrieve BYTECNT_TXD (00..0 & BYTECNT_TXD_ADDR) from RAM into BYTECNT
+        ; BEGIN
         LOAD TMP, 00
         OUTPUT TMP, RAM_A1_Port
         LOAD TMP, BYTECNT_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
         INPUT BYTECNT, RAM_D_Port
-		; END
+        ; END
         ; Check the number of bytes sent; if it's smaller than BLOCKLEN go to start state
         SUB BYTECNT, 01                  ; Decrement BYTECNT_TXD
         OUTPUT BYTECNT, RAM_D_Port       ; Store BYTECNT_TXD back in RAM
