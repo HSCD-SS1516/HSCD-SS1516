@@ -68,22 +68,22 @@
 ; Hauptfunktion
 start:  AND    CNTH, 00   ; Initialisierung der Zaehlers ...
         AND    CNTL, 00   ; in der ISR
-		; Initialize ADDR_RXD in RAM (01 & 00)
-		; BEGIN
-		LOAD   TMP,   00
-		OUTPUT TMP,   RAM_A1_Port
-		LOAD   TMP,   ADDRL_RXD_ADDR
-		OUTPUT TMP,   RAM_A0_Port
-		LOAD   TMP,   00
-		OUTPUT TMP,   RAM_D_Port
-		LOAD   TMP,   00
-		OUTPUT TMP,   RAM_A1_Port
-		LOAD   TMP,   ADDRH_RXD_ADDR
-		OUTPUT TMP,   RAM_A0_Port
-		LOAD   TMP,   01
-		OUTPUT TMP,   RAM_D_Port
-		; END
-		; Initialize BYTECNT_RXD to 00
+        ; Initialize ADDR_RXD in RAM (01 & 00)
+        ; BEGIN
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_A1_Port
+        LOAD   TMP,   ADDRL_RXD_ADDR
+        OUTPUT TMP,   RAM_A0_Port
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_D_Port
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_A1_Port
+        LOAD   TMP,   ADDRH_RXD_ADDR
+        OUTPUT TMP,   RAM_A0_Port
+        LOAD   TMP,   01
+        OUTPUT TMP,   RAM_D_Port
+        ; END
+        ; Initialize BYTECNT_RXD to 00
         ; BEGIN
         LOAD TMP, BYTECNT_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
@@ -133,7 +133,7 @@ RXD_IDLE:
         AND IOR, RXD
         COMPARE IOR, 00
         JUMP NZ, RXD_RET
-		; If data is equal to 0b0 (start bit), go to start state
+        ; If data is equal to 0b0 (start bit), go to start state
         LOAD RXDSTATE, RXDSTART
         LOAD RXDCNTR, 08
         JUMP RXD_RET
@@ -180,7 +180,6 @@ CHAR_INVALID:
         JUMP RXD_RET
 CHAR_VALID:
         ; TODO: should we expect a start bit for every byte or one for every block?
-        ; FIXME: if more than 16 bytes are sent the program sends back all of them, not just 16*n
         LOAD RXDSTATE, RXDIDLE          ; Go to reception idle state
         ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
         ; BEGIN
@@ -196,7 +195,7 @@ CHAR_VALID:
         JUMP NZ, STORE_CHAR
         ; Tell the TXD process to send one more block
         ADD AVAILABLE_BLOCKS, 01
-		; Initialize BYTECNT_RXD to 00
+        ; Initialize BYTECNT_RXD to 00
         ; BEGIN
         LOAD TMP, BYTECNT_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
@@ -215,7 +214,7 @@ STORE_CHAR:
         OUTPUT TMP, RAM_A0_Port
         INPUT ADDRH, RAM_D_Port
         LOAD TMP, ADDRL_RXD_ADDR
-		OUTPUT TMP, RAM_A0_Port
+        OUTPUT TMP, RAM_A0_Port
         INPUT ADDRL, RAM_D_Port
         ;       END
         OUTPUT ADDRL, RAM_A0_Port
@@ -234,8 +233,8 @@ STORE_ADDR_RXD:
         LOAD TMP, ADDRH_RXD_ADDR
         OUTPUT TMP, RAM_A0_Port
         OUTPUT ADDRH, RAM_D_Port
-		LOAD TMP, ADDRL_RXD_ADDR
-		OUTPUT TMP, RAM_A0_Port
+        LOAD TMP, ADDRL_RXD_ADDR
+        OUTPUT TMP, RAM_A0_Port
         OUTPUT ADDRL, RAM_D_Port
         ;       END
         ; END
@@ -278,7 +277,7 @@ TXD_IDLE:
         OUTPUT TMP, RAM_A0_Port
         INPUT ADDRH, RAM_D_Port
         LOAD TMP, ADDRL_RXD_ADDR
-		OUTPUT TMP, RAM_A0_Port
+        OUTPUT TMP, RAM_A0_Port
         INPUT ADDRL, RAM_D_Port
         LOAD TMP, ADDRH_TXD_ADDR
         OUTPUT TMP, RAM_A0_Port
@@ -313,7 +312,7 @@ TXD_START:
         OUTPUT TMP, RAM_A0_Port
         INPUT ADDRH, RAM_D_Port
         LOAD TMP, ADDRL_TXD_ADDR
-		OUTPUT TMP, RAM_A0_Port
+        OUTPUT TMP, RAM_A0_Port
         INPUT ADDRL, RAM_D_Port
         ;               END
         LOAD TMP, ADDRL
