@@ -13,9 +13,10 @@ ARCHITECTURE behaviour OF system_tb IS
    CONSTANT RSTDEF: std_ulogic := '1'; -- high active
    CONSTANT FRQMAX: natural    := natural(50.0e6);
    CONSTANT tpd:    time       := 1 sec / FRQMAX;
+   CONSTANT baud:   natural    := 9600;
 
    SUBTYPE std_byte IS std_logic_vector(7 DOWNTO 0);
-      
+
    COMPONENT system
       PORT(rst:  IN  std_logic;  -- system reset, high active
            clk:  IN  std_logic;  -- system clock, 50 MHz, rising edge active
@@ -28,34 +29,27 @@ ARCHITECTURE behaviour OF system_tb IS
            led1: OUT std_logic); -- led, low active
    END COMPONENT;
 
-   SIGNAL rst:  std_logic := NOT RSTDEF;
-   SIGNAL hlt:  std_logic := '0';
-   SIGNAL hlt1: std_logic := '0';
-   SIGNAL hlt2: std_logic := '0';
-   SIGNAL clk:  std_logic := '0';
-   SIGNAL btn0: std_logic := '1';
-   SIGNAL rxd:  std_logic := '1';
-   SIGNAL txd:  std_logic := '1';
-   SIGNAL led0: std_logic := '1';
-   SIGNAL led1: std_logic := '1';
-   SIGNAL src:  integer   := 0;
-   SIGNAL data: integer   := -1;
-   SIGNAL strb: std_logic := '0';
-   SIGNAL evn1: std_logic := '0';
-   SIGNAL evn2: std_logic := '0';
-   SIGNAL mes:  real      := 0.0;
-   SIGNAL avg:  real      := 0.0;
+   SIGNAL rst:   std_logic := NOT RSTDEF;
+   SIGNAL hlt:   std_logic := '0';
+   SIGNAL clk:   std_logic := '0';
+   SIGNAL btn0:  std_logic := '1';
+   SIGNAL rxd:   std_logic := '1';
+   SIGNAL txd:   std_logic := '1';
+   SIGNAL strt:  std_logic := '0';
+   SIGNAL led0:  std_logic := '1';
+   SIGNAL led1:  std_logic := '1';
+   SIGNAL chr1:  character := ' ';
+   SIGNAL chr2:  character := ' ';
+   SIGNAL strb:  std_logic := '0';
+   SIGNAL evn1:  std_logic := '0';
+   SIGNAL evn2:  std_logic := '0';
+   SIGNAL mes:   real      := 0.0;
+   SIGNAL avg:   real      := 0.0;
 
-   SIGNAL str:  string(1 TO 16);
-   SIGNAL strt: std_logic := '0';
-   SIGNAL done: std_logic := '0';
-   
 BEGIN
 
    rst <= RSTDEF AFTER 5*tpd, NOT RSTDEF AFTER 15*tpd;
    clk <= not(clk) AFTER tpd/2  WHEN hlt='0' ELSE clk;
-
-   hlt <= hlt1 AND hlt2;
 
    sys: system
    PORT MAP(rst  => rst,
@@ -68,100 +62,44 @@ BEGIN
             led0 => led0,
             led1 => led1);
 
-   button: PROCESS IS
-   BEGIN
---      hlt1 <= '0';
---
---      btn0 <= '1';
---      WAIT FOR 5 ms;
---      btn0 <= '0';
---      WAIT FOR 10 ms;
---
---      btn0 <= '1';
---      WAIT FOR 40 ms;
---      btn0 <= '0';
---      WAIT FOR 25 ms;
---
---      btn0 <= '1';
---      WAIT FOR 100 ms;
---      btn0 <= '0';
---      WAIT FOR 75 ms;
---
---      btn0 <= '1';
-      hlt1 <= '1';
-      WAIT;
-   END PROCESS;
+   main: PROCESS IS
+      CONSTANT dly: time := 1 sec / real(baud);
 
-   transmitter: PROCESS IS
-      CONSTANT baud: natural := 9600;
-      CONSTANT dly:  time    := 1 sec / real(baud);
-
-      PROCEDURE test1 IS
-         CONSTANT tpd: time := dly / 16.0;
+      FUNCTION isalnum(ch: character) RETURN boolean IS
       BEGIN
-         FOR i IN 1 TO 7 LOOP
-            txd  <= '0'; -- fallende Flanke am TxD-Signal erzeugen
-            WAIT FOR i*tpd;
-            txd  <= '1'; -- High am TxD-Signal erzeugen
-            WAIT FOR dly;
-         END LOOP;
-         WAIT FOR dly;
-      END PROCEDURE;
-      
-      PROCEDURE send(arg: natural) IS
+         RETURN (ch >= '0' AND ch <= '9') OR (ch >= 'a' AND ch <= 'z') OR (ch >= 'A' AND ch <= 'Z');
+      END FUNCTION isalnum;
+
+      PROCEDURE send(arg: character) IS
          VARIABLE tmp: std_byte;
       BEGIN
-         tmp  := conv_std_logic_vector(arg, tmp'LENGTH);
-         src  <= arg;
-         txd  <= '0'; -- Startbit
          WAIT FOR dly;
+         chr1 <= arg;
+         txd  <= '0'; -- Startbit
+         strt <= '1' AFTER 7*dly/16, '0' AFTER 8*dly/16;
+         WAIT FOR dly;
+         tmp  := conv_std_logic_vector(character'POS(arg), tmp'LENGTH);
          FOR i IN 0 TO 7 LOOP
             txd <= tmp(i);
             WAIT FOR dly;
          END LOOP;
-         txd  <= '1';
-         WAIT FOR dly;
+         txd  <= '1'; -- Stoppbit
       END PROCEDURE send;
 
       PROCEDURE send(arg: string) IS
       BEGIN
-         str  <= arg;
-         strt <= '1', '0' AFTER 100 ns;
          FOR i IN arg'LEFT TO arg'RIGHT LOOP
-            send(character'POS(arg(i)));
+            send(arg(i));
          END LOOP;
-         WAIT ON done;
       END PROCEDURE;
-   
-      VARIABLE ch: character;
-   BEGIN
-      hlt2 <= '0';
-      txd  <= '1';
-      WAIT UNTIL rst=NOT RSTDEF;
-      WAIT FOR dly;
 
-      test1;
-      
-      send("0123456789012345");
-      send("1!2õ4$5%6&7/{(89");
-      send("$$$$0$$$$$$$$$$$");
-      send("abcdefghijklmnop");
-      
-      WAIT FOR 10*dly;
-      hlt2 <= '1';
-      WAIT;
-   END PROCESS;
-
--- ----------------------------------------------------------------------------
-
-   receiver: PROCESS IS
-      CONSTANT baud: natural := 9600;
-      CONSTANT OSR:  natural := 16;
-      CONSTANT dly:  time    := 1 sec / real(OSR*baud);
-
-      PROCEDURE receive(arg: OUT natural) IS
+      PROCEDURE recv(arg: OUT character) IS
+         CONSTANT OSR: natural := 16;
+         CONSTANT dly: time    := 1 sec / real(OSR*baud);
          VARIABLE tmp: std_byte;
+         VARIABLE chr: character;
       BEGIN
+
          WAIT UNTIL rxd='0';
          WAIT FOR 8*dly;
          ASSERT rxd='0' REPORT "wrong start bit" SEVERITY error;
@@ -171,52 +109,49 @@ BEGIN
             strb <= '1', '0' AFTER 100 ns;
             tmp(i) := rxd;
          END  LOOP;
-         arg := conv_integer(tmp);
+         chr  := character'VAL(conv_integer(tmp));
+         arg  := chr;
+         chr2 <= chr;
          WAIT FOR 16*dly;
          strb <= '1', '0' AFTER 100 ns;
          ASSERT rxd='1' REPORT "wrong stop bit" SEVERITY error;
-      END PROCEDURE receive;
 
-      PROCEDURE receive(str: IN string; cnt: natural) IS
-         VARIABLE tmp: string(1 TO str'LENGTH);
-         VARIABLE arg: natural;
-      BEGIN
-         FOR i IN 1 TO cnt LOOP
-            receive(arg);
-            tmp(i) := character'VAL(arg);
-         END LOOP;
-         ASSERT str(1 TO cnt)=tmp(1 TO cnt) REPORT "wrong data block" SEVERITY error;
-         WAIT FOR 8*dly;
-      END PROCEDURE receive;
+      END PROCEDURE;
 
-      PROCEDURE getCharacters(arg: string; tmp: OUT string; cnt: OUT natural) IS
-         FUNCTION isalnum(ch: character) RETURN boolean IS
-         BEGIN
-            RETURN (ch >= '0' AND ch <= '9') OR (ch >= 'a' AND ch <= 'z') OR (ch >= 'A' AND ch <= 'Z');
-         END FUNCTION isalnum;
-         VARIABLE k: natural;
+      PROCEDURE recv(arg: string) IS
+         VARIABLE tmp: string(1 TO arg'LENGTH) := arg;
+         VARIABLE chr: character;
       BEGIN
-         k := 0;
-         FOR i IN arg'RANGE LOOP
-            IF isalnum(arg(i)) THEN
-               k := k + 1;
-               tmp(k) := arg(i);
+         FOR i IN 1 TO tmp'LENGTH LOOP
+            IF isalnum(tmp(i)) THEN
+               recv(chr);
+               ASSERT tmp(i)=chr REPORT "wrong character" SEVERITY error;
             END IF;
          END LOOP;
-         cnt := k;
-      END PROCEDURE getCharacters;
+      END PROCEDURE;
+
+      PROCEDURE test(nr: natural; arg: string) IS
+         CONSTANT msg: string := "test " & integer'image(nr) & " ...";
+      BEGIN
+         REPORT msg;
+         send(arg);
+         recv(arg);
+      END PROCEDURE;
    
-      VARIABLE cnt: natural;
-      VARIABLE tmp: string(1 TO 16); 
    BEGIN
+      hlt <= '0';
+      txd <= '1';
       WAIT UNTIL rst=NOT RSTDEF;
       WAIT FOR dly;
-      WHILE hlt='0' LOOP
-         WAIT ON strt;
-         getCharacters(str, tmp, cnt);
-         receive(tmp, cnt);
-         done <= '1', '0' AFTER 100 ns;
-      END LOOP;
+
+      test(1, "0123456789012345");
+      test(2, "1!2õ4$5%6&7/{(89");
+      test(3, "$$$$0$$$$$$$$$$$");
+      test(4, "abcdefghijklmnop");
+
+      WAIT FOR 10*dly;
+      hlt <= '1';
+      REPORT "done ...";
       WAIT;
    END PROCESS;
 
@@ -244,6 +179,16 @@ BEGIN
       END LOOP;
       WAIT;
    END PROCESS;
+
+--   PROCESS IS
+--      VARIABLE cnt: integer := 1;
+--   BEGIN
+--      LOOP
+--         mes <= real(cnt);
+--         cnt := cnt + 1;
+--         WAIT FOR 100 ns;
+--      END LOOP;
+--   END PROCESS;
 
    PROCESS (mes) IS
       VARIABLE cnt: integer := 1;
