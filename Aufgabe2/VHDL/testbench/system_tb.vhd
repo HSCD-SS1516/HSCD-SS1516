@@ -145,7 +145,9 @@ BEGIN
       WAIT FOR dly;
 
       test(1, "0123456789012345");
-      test(2, "1!2õ4$5%6&7/{(89");
+	  -- NOTE: 'õ' is NOT an ASCII character! (two bytes)
+      --test(2, "1!2õ4$5%6&7/{(89");
+	  test(2, "1!2ö4$5%6&7/{(89");
       test(3, "$$$$0$$$$$$$$$$$");
       test(4, "abcdefghijklmnop");
 
