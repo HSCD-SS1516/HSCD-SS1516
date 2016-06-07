@@ -108,6 +108,7 @@ BEGIN
             WAIT FOR 16*dly;
             strb <= '1', '0' AFTER 100 ns;
             tmp(i) := rxd;
+            --REPORT "received bit: " & std_logic'image(tmp(i));
          END  LOOP;
          chr  := character'VAL(conv_integer(tmp));
          arg  := chr;
@@ -125,7 +126,7 @@ BEGIN
          FOR i IN 1 TO tmp'LENGTH LOOP
             IF isalnum(tmp(i)) THEN
                recv(chr);
-               ASSERT tmp(i)=chr REPORT "wrong character" SEVERITY error;
+               ASSERT tmp(i)=chr REPORT "wrong character (expected " & tmp(i) & " and got " & chr & ")" SEVERITY error;
             END IF;
          END LOOP;
       END PROCEDURE;
@@ -145,9 +146,7 @@ BEGIN
       WAIT FOR dly;
 
       test(1, "0123456789012345");
-	  -- NOTE: 'õ' is NOT an ASCII character! (two bytes)
-      --test(2, "1!2õ4$5%6&7/{(89");
-	  test(2, "1!2ö4$5%6&7/{(89");
+      test(2, "1!2õ4$5%6&7/{(89");
       test(3, "$$$$0$$$$$$$$$$$");
       test(4, "abcdefghijklmnop");
 

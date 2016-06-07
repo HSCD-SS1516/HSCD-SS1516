@@ -69,6 +69,8 @@
 ; Hauptfunktion
 start:  AND    CNTH, 00   ; Initialisierung der Zaehlers ...
         AND    CNTL, 00   ; in der ISR
+		LOAD RXDCNTR, 00
+		LOAD TXDCNTR, 00
 		LOAD AVAILABLE_BYTES, 00
         ; Initialize ADDR_RXD in RAM (01 & 00)
         ; BEGIN
@@ -137,30 +139,26 @@ RXD_IDLE:
         JUMP NZ, RXD_RET
         ; If data is equal to 0b0 (start bit), go to start state
         LOAD RXDSTATE, RXDSTART
-        LOAD RXDCNTR, 08
         JUMP RXD_RET
 RXD_START:
-        SUB RXDCNTR, 01
-        JUMP NZ, RXD_RET                ; Wait for 8 clock periods
+        SUB RXDCNTR, 20
+        JUMP NZ, RXD_RET                ; Wait for 8 clock periods (RXDCNTR underflow)
         INPUT IOR, COM_Port             ; Read data from COM port
         AND IOR, RXD
         LOAD RXDSTATE, RXDIDLE          ; If data is different to 0b0 (start bit), return to idle state
         COMPARE IOR, 00
         JUMP NZ, RXD_RET
         LOAD RXDSTATE, RXDWORK          ; If data is equal to 0b0 (start bit), go to work state
-        LOAD RXDCNTR, 10
-        LOAD SAVEDBITS, 08
         LOAD READBYTE, 00
         JUMP RXD_RET
 RXD_WORK:
-        SUB RXDCNTR, 01
-        JUMP NZ, RXD_RET                ; Wait for 16 clock periods
-        LOAD RXDCNTR, 10
+        SUB RXDCNTR, 10
+        JUMP NZ, RXD_RET                ; Wait for 16 clock periods (RXDCNTR underflow)
         INPUT IOR, COM_Port             ; Read data from COM port
         AND IOR, RXD                    ; Keep only the LSB
         OR READBYTE, IOR                ; Copy read bit into READBYTE's LSB
         RR READBYTE                     ; Rotate READBYTE to the right and put LSB in MSB
-        SUB SAVEDBITS, 01
+        SUB SAVEDBITS, 20
         JUMP NZ, RXD_RET                ; If all 8 bits have been read continue with check
 		; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
         ; BEGIN
@@ -305,10 +303,12 @@ TXD_IDLE:
         OUTPUT TMP, TXD                 ; Output 0b1
         COMPARE AVAILABLE_BYTES, 00
         JUMP Z, TXD_RET                 ; If there are no new bytes available stay in TXD_IDLE
+		; Wait for 16 clock periods to start transmitting
+		SUB TXDCNTR, 10
+		JUMP NZ, TXD_RET
         ; Setup TXD process data
         ; BEGIN
         LOAD TXDSTATE, TXDSTART         ; Go to transmission start state
-        LOAD TXDCNTR, 10
         ;       Initialize BYTECNT_TXD to AVAILABLE_BYTES
         ;       BEGIN
         LOAD TMP, 00
@@ -339,10 +339,8 @@ TXD_IDLE:
 TXD_START:
         LOAD TMP, 00
         OUTPUT TMP, TXD                 ; Output 0b0 (start bit)
-        SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
-        LOAD TXDCNTR, 10
-        LOAD SENTBITS, 08
+        SUB TXDCNTR, 10
+        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods (TXDCNTR underflow)
         ; Retrieve BYTECNT_TXD (00..0 & BYTECNT_TXD_ADDR) from RAM into BYTECNT
         ; BEGIN
         LOAD TMP, 00
@@ -379,22 +377,19 @@ LOAD_CHAR:
         LOAD TXDSTATE, TXDWORK          ; Go to work state
 TXD_WORK:
         OUTPUT SENDBUF, TXD             ; Write SENDBUF into TXD register
-        SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
+        SUB TXDCNTR, 10
+        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods (TXDCNTR underflow)
         SR0 SENDBUF                     ; Rotate SENDBUF to the right (send from LSB to MSB)
-        LOAD TXDCNTR, 10
-        SUB SENTBITS, 01                ; Repeat all above for each bit in SENDBUF
+        SUB SENTBITS, 20                ; Repeat all above for each bit in SENDBUF
         JUMP Z, TXD_WORK_CHANGESTATE
         JUMP TXD_RET
 TXD_WORK_CHANGESTATE:
         LOAD TXDSTATE, TXDSTOP          ; If all 8 bits have been sent, go to stop state
-        JUMP TXD_RET
 TXD_STOP:
         LOAD TMP, 01
         OUTPUT TMP, TXD                 ; Output 0b1 (stop bit)
-        SUB TXDCNTR, 01
-        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods
-        LOAD TXDCNTR, 10
+        SUB TXDCNTR, 10
+        JUMP NZ, TXD_RET                ; Repeat for 16 clock periods (TXDCNTR underflow)
         ; Decrement BYTECNT_TXD and AVAILABLE_BYTES
         ; BEGIN
         ;       Load BYTECNT_TXD (00..0 & BYTECNT_TXD_ADDR) from RAM into BYTECNT
