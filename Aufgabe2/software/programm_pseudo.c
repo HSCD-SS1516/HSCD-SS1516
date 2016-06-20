@@ -28,18 +28,13 @@ void comm_receive() {
                     RXDSTATE = RXDIDLE;
                     if (char_check(READBYTE)) {
                         VALIDBYTES++;
-                        if (BYTECNT_RXD == BLOCKLEN) {
-                            AVAILABLE_BYTES += VALIDBYTES;
-                            VALIDBYTES = 0;
-                            BYTECNT_RXD = 0;
-                        }
+                        
                         store_char(READBYTE, ADDR_RXD++);
-                    } else {
-                        if (BYTECNT_RXD == BLOCKLEN) {
-                            AVAILABLE_BYTES += VALIDBYTES;
-                            VALIDBYTES = 0;
-                            BYTECNT_RXD = 0;
-                        }
+                    }
+                    if (BYTECNT_RXD == BLOCKLEN) {
+                        AVAILABLE_BYTES += VALIDBYTES;
+                        VALIDBYTES = 0;
+                        BYTECNT_RXD = 0;
                     }
                 }
             }

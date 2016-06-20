@@ -186,47 +186,7 @@ CHAR_CHECK:
         JUMP C, CHAR_INVALID
         COMPARE READBYTE, ASCIIz
         JUMP C, CHAR_VALID
-; TODO: optimize
-CHAR_INVALID:
-        ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
-        ; BEGIN
-        LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, BYTECNT_RXD_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        INPUT BYTECNT, RAM_D_Port
-        ; END
-        COMPARE BYTECNT, BLOCKLEN
-        JUMP NZ, RXD_RET
-        ; Load VALIDBYTES
-        ; BEGIN
-        LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, VALIDBYTES_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        INPUT TMP, RAM_D_Port
-        ; END
-        ADD AVAILABLE_BYTES, TMP        ; Tell the TXD process to send VALIDBYTES more bytes
-        LOAD TMP, 00                    ; Reset VALIDBYTES
-        OUTPUT TMP, RAM_D_Port          ; Store back
-        ; Reset BYTECNT_RXD
-        ; BEGIN
-        LOAD TMP, BYTECNT_RXD_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        OUTPUT TMP, RAM_D_Port
-        ; END
-        JUMP RXD_RET
 CHAR_VALID:
-        ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
-        ; BEGIN
-        LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, BYTECNT_RXD_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        INPUT BYTECNT, RAM_D_Port
-        ; END
         ; Load VALIDBYTES
         ; BEGIN
         LOAD TMP, 00
@@ -237,19 +197,6 @@ CHAR_VALID:
         ; END
         ADD TMP, 01                     ; Increment VALIDBYTES
         OUTPUT TMP, RAM_D_Port          ; Store back
-        COMPARE BYTECNT, BLOCKLEN
-        JUMP NZ, STORE_CHAR
-        ADD AVAILABLE_BYTES, TMP        ; Tell the TXD process to send VALIDBYTES more bytes
-        LOAD TMP, 00                    ; Reset VALIDBYTES
-        OUTPUT TMP, RAM_D_Port          ; Store back
-        ; Reset BYTECNT_RXD
-        ; BEGIN
-        LOAD TMP, BYTECNT_RXD_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        OUTPUT TMP, RAM_D_Port
-        ; END
 STORE_CHAR:
         ; Store read byte in RAM and increment current address for RXD
         ; BEGIN
@@ -284,6 +231,36 @@ STORE_ADDR_RXD:
         OUTPUT TMP, RAM_A0_Port
         OUTPUT ADDRL, RAM_D_Port
         ;       END
+        ; END
+CHAR_INVALID:
+        ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
+        ; BEGIN
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
+        LOAD TMP, BYTECNT_RXD_ADDR
+        OUTPUT TMP, RAM_A0_Port
+        INPUT BYTECNT, RAM_D_Port
+        ; END
+        COMPARE BYTECNT, BLOCKLEN
+        JUMP NZ, RXD_RET
+        ; Load VALIDBYTES
+        ; BEGIN
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
+        LOAD TMP, VALIDBYTES_ADDR
+        OUTPUT TMP, RAM_A0_Port
+        INPUT TMP, RAM_D_Port
+        ; END
+        ADD AVAILABLE_BYTES, TMP        ; Tell the TXD process to send VALIDBYTES more bytes
+        LOAD TMP, 00                    ; Reset VALIDBYTES
+        OUTPUT TMP, RAM_D_Port          ; Store back
+        ; Reset BYTECNT_RXD
+        ; BEGIN
+        LOAD TMP, BYTECNT_RXD_ADDR
+        OUTPUT TMP, RAM_A0_Port
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
+        OUTPUT TMP, RAM_D_Port
         ; END
 RXD_RET:
         RETURN
