@@ -28,7 +28,6 @@ void comm_receive() {
                     RXDSTATE = RXDIDLE;
                     if (char_check(READBYTE)) {
                         VALIDBYTES++;
-                        
                         store_char(READBYTE, ADDR_RXD++);
                     }
                     if (BYTECNT_RXD == BLOCKLEN) {

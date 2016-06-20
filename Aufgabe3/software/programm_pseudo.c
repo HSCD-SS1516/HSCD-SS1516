@@ -32,7 +32,7 @@ void comm_receive() {
                     }
                     if (BYTECNT_RXD == BLOCKLEN) {
                         // Start the sorting in the coprocessor
-                        CPROC.PTR = ADDR_RXD - VALIDBYTES + 1;
+                        CPROC.PTR = ADDR_RXD - VALIDBYTES;
                         CPROC.LEN = BLOCKLEN;
                         CPROC.CTRL = 0x01;
                         RXDSTATE = WAIT_CPROC;
