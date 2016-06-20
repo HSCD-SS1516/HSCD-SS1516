@@ -69,17 +69,57 @@ BEGIN
         ELSIF rising_edge(clk) THEN
             CASE state IS
                 WHEN IDLE =>
+                    WEB <= '0';
+                    ENB <= '0';
                 WHEN S0 =>
+                    done <= '0';
                     -- Load a(i) from RAM
                     WEB <= '0';
                     ENB <= '1';
-                    ADR <= ...;
+                    ADR <= conv_integer(ptr) + i;
+                    state <= S1;
                 WHEN S1 =>
+                    WEB <= '0';
                     -- key := a(i)
-                    
+                    key <= conv_integer(DOB);
+                    j <= i - 1;
+                    -- Load a(j) from RAM
+                    ADR <= conv_integer(ptr) + j;
+                    state <= S2;
                 WHEN S2 =>
+                    -- IF a(j) <= key THEN goto IDLE
+                    IF conv_integer(DOB) <= key THEN
+                        done <= '1';
+                        state <= IDLE;
+                    ELSE
+                        -- a(j + 1) := a(j)
+                        WEB <= '1';
+                        ADR <= conv_integer(ptr) + j + 1;
+                        DIB <= conv_integer(DOB);
+                        j <= j - 1;
+                        IF j >= 0 THEN
+                            state <= S3;
+                        ELSE
+                            state <= S4;
+                        END IF;
+                    END IF;
                 WHEN S3 =>
+                    -- Load a(j) from RAM
+                    WEB <= '0';
+                    ADR <= conv_integer(ptr) + j;
+                    state <= S2;
                 WHEN S4 =>
+                    -- a(j + 1) := key
+                    WEB <= '1';
+                    ADR <= conv_integer(ptr) + j + 1;
+                    DIB <= key;
+                    i <= i + 1;
+                    IF i < N THEN
+                        state <= S1;
+                    ELSE
+                        done <= '1';
+                        state <= IDLE;
+                    END IF;
             END CASE;
         END IF;
     END PROCESS;
