@@ -35,7 +35,7 @@
         CONSTANT ADDRH_TXD_ADDR, 05  ; Address for ADDRX_RXD: (00 & ADDRX_TXD_ADDR)
         CONSTANT ADDRL_TXD_ADDR, 06
 
-        CONSTANT BLOCKLEN, FF
+        CONSTANT BLOCKLEN, 10
 
 ; Register Mapping
 ; alle acht Register s0 bis s7 stehen der ISR zur Verfuegung
