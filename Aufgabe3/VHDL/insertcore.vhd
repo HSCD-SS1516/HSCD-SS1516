@@ -1,7 +1,6 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
-USE ieee.std_logic_arith.ALL;
-USE ieee.std_logic_unsigned.ALL;
+USE ieee.numeric_std.ALL;
 
 ENTITY insertcore IS
    GENERIC(RSTDEF: std_logic := '1');
@@ -50,16 +49,17 @@ ARCHITECTURE verhalten OF insertcore IS
     SIGNAL i: integer;
     SIGNAL j: integer;
     SIGNAL data_j: character;
+	 SIGNAL tmp: std_logic_vector(7 DOWNTO 0);
 
 BEGIN
 
-    PROCESS (rst, clk) IS
+    PROCESS (rst, strt, clk) IS
     BEGIN
-        IF rst = RSTDEF OR (rising_edge(clk) AND strt = '1') THEN
+        IF rst = RSTDEF OR strt = '1' THEN
             IF strt = '1' THEN
-                state := S0;
+                state <= S0;
             ELSE
-                state := IDLE;
+                state <= IDLE;
             END IF;
             done <= '0';
             WEB  <= '0';
@@ -76,26 +76,27 @@ BEGIN
                     -- Load a(i) from RAM
                     WEB <= '0';
                     ENB <= '1';
-                    ADR <= conv_integer(ptr) + i;
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + i, 11));
                     state <= S1;
                 WHEN S1 =>
                     WEB <= '0';
                     -- key := a(i)
-                    key <= conv_integer(DOB);
+                    key <= character'val(to_integer(unsigned(DIB)));
                     j <= i - 1;
                     -- Load a(j) from RAM
-                    ADR <= conv_integer(ptr) + j;
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, 11));
                     state <= S2;
                 WHEN S2 =>
                     -- IF a(j) <= key THEN goto IDLE
-                    IF conv_integer(DOB) <= key THEN
+                    IF character'val(to_integer(unsigned(DIB))) <= key THEN
                         done <= '1';
                         state <= IDLE;
                     ELSE
                         -- a(j + 1) := a(j)
                         WEB <= '1';
-                        ADR <= conv_integer(ptr) + j + 1;
-                        DIB <= conv_integer(DOB);
+                        ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, 11));
+								tmp <= DIB;
+								DOB <= tmp;
                         j <= j - 1;
                         IF j >= 0 THEN
                             state <= S3;
@@ -106,15 +107,15 @@ BEGIN
                 WHEN S3 =>
                     -- Load a(j) from RAM
                     WEB <= '0';
-                    ADR <= conv_integer(ptr) + j;
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, 11));
                     state <= S2;
                 WHEN S4 =>
                     -- a(j + 1) := key
                     WEB <= '1';
-                    ADR <= conv_integer(ptr) + j + 1;
-                    DIB <= key;
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, 11));
+                    DOB <= std_logic_vector(to_unsigned(character'pos(key), 8));
                     i <= i + 1;
-                    IF i < N THEN
+                    IF i < to_integer(unsigned(len)) THEN
                         state <= S1;
                     ELSE
                         done <= '1';
