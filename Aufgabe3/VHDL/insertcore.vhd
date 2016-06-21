@@ -45,7 +45,7 @@ ARCHITECTURE verhalten OF insertcore IS
     
     TYPE tstate IS (IDLE, S0, S1, S2, S3, S4);
     SIGNAL state: tstate := IDLE;
-    SIGNAL key: character;
+    SIGNAL key: integer;
     SIGNAL i: integer;
     SIGNAL j: integer;
     SIGNAL data_j: character;
@@ -81,14 +81,14 @@ BEGIN
                 WHEN S1 =>
                     WEB <= '0';
                     -- key := a(i)
-                    key <= character'val(to_integer(unsigned(DIB)));
+                    key <= to_integer(unsigned(DIB));
                     j <= i - 1;
                     -- Load a(j) from RAM
                     ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, 11));
                     state <= S2;
                 WHEN S2 =>
                     -- IF a(j) <= key THEN goto IDLE
-                    IF character'val(to_integer(unsigned(DIB))) <= key THEN
+                    IF to_integer(unsigned(DIB)) <= key THEN
                         done <= '1';
                         state <= IDLE;
                     ELSE
@@ -113,7 +113,7 @@ BEGIN
                     -- a(j + 1) := key
                     WEB <= '1';
                     ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, 11));
-                    DOB <= std_logic_vector(to_unsigned(character'pos(key), 8));
+                    DOB <= std_logic_vector(to_unsigned(key, 8));
                     i <= i + 1;
                     IF i < to_integer(unsigned(len)) THEN
                         state <= S1;
