@@ -48,8 +48,7 @@ ARCHITECTURE verhalten OF insertcore IS
     SIGNAL key: integer;
     SIGNAL i: integer;
     SIGNAL j: integer;
-    SIGNAL data_j: character;
-	 SIGNAL tmp: std_logic_vector(7 DOWNTO 0);
+    SIGNAL tmp: std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
 
 BEGIN
 
@@ -64,8 +63,7 @@ BEGIN
             done <= '0';
             WEB  <= '0';
             ENB  <= '0';
-            i    <=  0;
-            j    <=  0;
+            i    <=  1;
         ELSIF rising_edge(clk) THEN
             CASE state IS
                 WHEN IDLE =>
@@ -76,7 +74,7 @@ BEGIN
                     -- Load a(i) from RAM
                     WEB <= '0';
                     ENB <= '1';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + i, 11));
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + i, ADR'LENGTH));
                     state <= S1;
                 WHEN S1 =>
                     WEB <= '0';
@@ -84,7 +82,7 @@ BEGIN
                     key <= to_integer(unsigned(DIB));
                     j <= i - 1;
                     -- Load a(j) from RAM
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, 11));
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, ADR'LENGTH));
                     state <= S2;
                 WHEN S2 =>
                     -- IF a(j) <= key THEN goto IDLE
@@ -94,9 +92,9 @@ BEGIN
                     ELSE
                         -- a(j + 1) := a(j)
                         WEB <= '1';
-                        ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, 11));
-								tmp <= DIB;
-								DOB <= tmp;
+                        ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, ADR'LENGTH));
+                        tmp <= DIB;
+                        DOB <= tmp;
                         j <= j - 1;
                         IF j >= 0 THEN
                             state <= S3;
@@ -107,13 +105,13 @@ BEGIN
                 WHEN S3 =>
                     -- Load a(j) from RAM
                     WEB <= '0';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, 11));
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, ADR'LENGTH));
                     state <= S2;
                 WHEN S4 =>
                     -- a(j + 1) := key
                     WEB <= '1';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, 11));
-                    DOB <= std_logic_vector(to_unsigned(key, 8));
+                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, ADR'LENGTH));
+                    DOB <= std_logic_vector(to_unsigned(key, DOB'LENGTH));
                     i <= i + 1;
                     IF i < to_integer(unsigned(len)) THEN
                         state <= S1;
