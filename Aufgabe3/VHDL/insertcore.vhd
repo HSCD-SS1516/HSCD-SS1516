@@ -1,6 +1,7 @@
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
-USE ieee.numeric_std.ALL;
+USE ieee.std_logic_arith.ALL;
+USE ieee.std_logic_unsigned.ALL;
 
 ENTITY insertcore IS
    GENERIC(RSTDEF: std_logic := '1');
@@ -43,12 +44,11 @@ ARCHITECTURE verhalten OF insertcore IS
         END LOOP;
     END PROCEDURE;
     
-    TYPE tstate IS (IDLE, S0, S1, S2, S3, S4);
+    TYPE tstate IS (IDLE, S0, S0_2, S1, S2, S3, S3_2, S4);
     SIGNAL state: tstate := IDLE;
-    SIGNAL key: integer;
-    SIGNAL i: integer;
-    SIGNAL j: integer;
-    SIGNAL tmp: std_logic_vector(7 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL key: unsigned(7 DOWNTO 0);
+    SIGNAL i: natural;
+    SIGNAL j: natural;
 
 BEGIN
 
@@ -71,50 +71,56 @@ BEGIN
                     ENB <= '0';
                 WHEN S0 =>
                     done <= '0';
-                    -- Load a(i) from RAM
+                    -- Load a(i) from RAM (available after 2 cycles)
                     WEB <= '0';
                     ENB <= '1';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + i, ADR'LENGTH));
+                    ADR <= conv_std_logic_vector(unsigned(ptr) + i, ADR'LENGTH);
+                    state <= S0_2;
+                WHEN S0_2 =>
+                    -- Load a(j) from RAM (available after 2 cycles)
+                    ADR <= conv_std_logic_vector(unsigned(ptr) + i - 1, ADR'LENGTH);
                     state <= S1;
                 WHEN S1 =>
                     WEB <= '0';
                     -- key := a(i)
-                    key <= to_integer(unsigned(DIB));
+                    key <= unsigned(DIB);
                     j <= i - 1;
-                    -- Load a(j) from RAM
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, ADR'LENGTH));
                     state <= S2;
                 WHEN S2 =>
-                    -- IF a(j) <= key THEN goto IDLE
-                    IF to_integer(unsigned(DIB)) <= key THEN
-                        done <= '1';
-                        state <= IDLE;
+                    -- IF a(j) <= key THEN go to S4
+                    IF unsigned(DIB) <= key THEN
+                        -- TODO: optimizable; it's possible to execute S4 in this cycle
+                        WEB <= '0';
+                        state <= S4;
                     ELSE
                         -- a(j + 1) := a(j)
                         WEB <= '1';
-                        ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, ADR'LENGTH));
-                        tmp <= DIB;
-                        DOB <= tmp;
-                        j <= j - 1;
-                        IF j >= 0 THEN
+                        ADR <= conv_std_logic_vector(unsigned(ptr) + j + 1, ADR'LENGTH);
+                        DOB <= DIB;
+                        IF j >= 1 THEN
+                            j <= j - 1;
                             state <= S3;
                         ELSE
                             state <= S4;
                         END IF;
                     END IF;
                 WHEN S3 =>
-                    -- Load a(j) from RAM
+                    -- Load a(j) from RAM (available after 2 cycles)
                     WEB <= '0';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j, ADR'LENGTH));
+                    ADR <= conv_std_logic_vector(unsigned(ptr) + j, ADR'LENGTH);
+                    state <= S3_2;
+                WHEN S3_2 =>
                     state <= S2;
                 WHEN S4 =>
-                    -- a(j + 1) := key
+                    -- NOTE: the algorithm was slightly modified; j is not decremented in the 
+                    -- last iteration of the inner WHILE loop
+                    -- a(j) := key
                     WEB <= '1';
-                    ADR <= std_logic_vector(to_unsigned(to_integer(unsigned(ptr)) + j + 1, ADR'LENGTH));
-                    DOB <= std_logic_vector(to_unsigned(key, DOB'LENGTH));
-                    i <= i + 1;
-                    IF i < to_integer(unsigned(len)) THEN
-                        state <= S1;
+                    ADR <= conv_std_logic_vector(unsigned(ptr) + j, ADR'LENGTH);
+                    DOB <= conv_std_logic_vector(key, DOB'LENGTH);
+                    IF i + 1 < unsigned(len) THEN
+                        i <= i + 1;
+                        state <= S0;
                     ELSE
                         done <= '1';
                         state <= IDLE;
