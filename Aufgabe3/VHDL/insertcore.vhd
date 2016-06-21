@@ -89,9 +89,23 @@ BEGIN
                 WHEN S2 =>
                     -- IF a(j) <= key THEN go to S4
                     IF unsigned(DIB) <= key THEN
-                        -- TODO: optimizable; it's possible to execute S4 in this cycle
-                        WEB <= '0';
-                        state <= S4;
+                        --WEB <= '0';
+                        --state <= S4;
+                        -- NOTE: the algorithm was slightly modified; j is not decremented in the 
+                        -- last iteration of the inner WHILE loop
+                        -- S4 ----------------------
+                        -- a(j) := key
+                        WEB <= '1';
+                        ADR <= conv_std_logic_vector(unsigned(ptr) + j, ADR'LENGTH);
+                        DOB <= conv_std_logic_vector(key, DOB'LENGTH);
+                        IF i + 1 < unsigned(len) THEN
+                            i <= i + 1;
+                            state <= S0;
+                        ELSE
+                            done <= '1';
+                            state <= IDLE;
+                        END IF;
+                        -- END S4 ------------------
                     ELSE
                         -- a(j + 1) := a(j)
                         WEB <= '1';
