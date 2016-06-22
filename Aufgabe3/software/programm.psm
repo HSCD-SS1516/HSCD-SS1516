@@ -242,6 +242,16 @@ STORE_ADDR_RXD:
         ;       END
         ; END
 CHAR_INVALID:
+        ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
+        ; BEGIN
+        LOAD TMP, 00
+        OUTPUT TMP, RAM_A1_Port
+        LOAD TMP, BYTECNT_RXD_ADDR
+        OUTPUT TMP, RAM_A0_Port
+        INPUT BYTECNT, RAM_D_Port
+        ; END
+        COMPARE BYTECNT, BLOCKLEN
+        JUMP NZ, RXD_RET
         ; Set the PTR value to ADDR_RXD - VALIDBYTES
         ; BEGIN
         ;       Load ADDR_RXD (00..0 & ADDR_RXD_ADDR) from RAM
@@ -264,7 +274,7 @@ CHAR_INVALID:
         INPUT TMP, RAM_D_Port
         ;       END
         SUB ADDRL, TMP
-        JUMP NZ, SETPTR
+        JUMP NC, SETPTR
         SUB ADDRH, 01
 SETPTR:
         OUTPUT ADDRL, CPROC_PTR0_Port
@@ -282,18 +292,13 @@ SETPTR:
         LOAD RXDSTATE, WAIT_CPROC
         JUMP RXD_RET
 WAITCPROC:
-        INPUT TMP, CPROC_STATUS_Port
-        COMPARE TMP, 01
-        JUMP NZ, RXD_RET
-        ; Load BYTECNT_RXD (00..0 & BYTECNT_RXD_ADDR) from RAM into BYTECNT
+        ; Set the strt flag to 0
         ; BEGIN
         LOAD TMP, 00
-        OUTPUT TMP, RAM_A1_Port
-        LOAD TMP, BYTECNT_RXD_ADDR
-        OUTPUT TMP, RAM_A0_Port
-        INPUT BYTECNT, RAM_D_Port
+        OUTPUT TMP, CPROC_CTRL_Port
         ; END
-        COMPARE BYTECNT, BLOCKLEN
+        INPUT TMP, CPROC_STATUS_Port
+        COMPARE TMP, 01
         JUMP NZ, RXD_RET
         ; Load VALIDBYTES
         ; BEGIN
@@ -314,6 +319,7 @@ WAITCPROC:
         OUTPUT TMP, RAM_A1_Port
         OUTPUT TMP, RAM_D_Port
         ; END
+        LOAD RXDSTATE, RXDIDLE
 RXD_RET:
         RETURN
 

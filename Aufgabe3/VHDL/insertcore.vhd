@@ -48,7 +48,7 @@ ARCHITECTURE verhalten OF insertcore IS
     SIGNAL state: tstate := IDLE;
     SIGNAL key: unsigned(7 DOWNTO 0);
     SIGNAL i: natural;
-    SIGNAL j: natural;
+    SIGNAL j: integer;
 
 BEGIN
 
@@ -91,12 +91,10 @@ BEGIN
                     IF unsigned(DIB) <= key THEN
                         --WEB <= '0';
                         --state <= S4;
-                        -- NOTE: the algorithm was slightly modified; j is not decremented in the 
-                        -- last iteration of the inner WHILE loop
                         -- S4 ----------------------
-                        -- a(j) := key
+                        -- a(j + 1) := key
                         WEB <= '1';
-                        ADR <= conv_std_logic_vector(unsigned(ptr) + j, ADR'LENGTH);
+                        ADR <= conv_std_logic_vector(unsigned(ptr) + j + 1, ADR'LENGTH);
                         DOB <= conv_std_logic_vector(key, DOB'LENGTH);
                         IF i + 1 < unsigned(len) THEN
                             i <= i + 1;
@@ -111,8 +109,8 @@ BEGIN
                         WEB <= '1';
                         ADR <= conv_std_logic_vector(unsigned(ptr) + j + 1, ADR'LENGTH);
                         DOB <= DIB;
+                        j <= j - 1;
                         IF j >= 1 THEN
-                            j <= j - 1;
                             state <= S3;
                         ELSE
                             state <= S4;
@@ -126,11 +124,9 @@ BEGIN
                 WHEN S3_2 =>
                     state <= S2;
                 WHEN S4 =>
-                    -- NOTE: the algorithm was slightly modified; j is not decremented in the 
-                    -- last iteration of the inner WHILE loop
-                    -- a(j) := key
+                    -- a(j + 1) := key
                     WEB <= '1';
-                    ADR <= conv_std_logic_vector(unsigned(ptr) + j, ADR'LENGTH);
+                    ADR <= conv_std_logic_vector(unsigned(ptr) + j + 1, ADR'LENGTH);
                     DOB <= conv_std_logic_vector(key, DOB'LENGTH);
                     IF i + 1 < unsigned(len) THEN
                         i <= i + 1;
