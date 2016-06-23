@@ -226,8 +226,10 @@ STORE_CHAR:
         ADD ADDRL, 01
         JUMP NC, STORE_ADDR_RXD
         ADD ADDRH, 01
-        JUMP NZ, STORE_ADDR_RXD         ; Check for overflow
-        ADD ADDRH, 01
+        ; Overflow when ADDRH > 07
+        ;COMPARE ADDRH, 08
+        ;JUMP NZ, STORE_ADDR_RXD
+        ;LOAD ADDRH, 01
 STORE_ADDR_RXD:
         ;       Store ADDR_RXD variables back in RAM
         ;       BEGIN
@@ -276,6 +278,9 @@ CHAR_INVALID:
         SUB ADDRL, TMP
         JUMP NC, SETPTR
         SUB ADDRH, 01
+        ; Underflow: the addresses 0x0000-0x0100 are reserved for variables
+        ;JUMP Z, SETPTR
+        ;LOAD ADDRH, 07
 SETPTR:
         OUTPUT ADDRL, CPROC_PTR0_Port
         OUTPUT ADDRH, CPROC_PTR1_Port
@@ -405,6 +410,10 @@ TXD_START:
         LOAD TMP, ADDRH
         SUB TMP, 01
         OUTPUT TMP, RAM_A1_Port
+        ; Underflow: the addresses 0x0000-0x0100 are reserved for variables
+        ;JUMP Z, LOAD_CHAR
+        ;LOAD TMP, 07
+        ;OUTPUT TMP, RAM_A1_Port
         ;       END
 LOAD_CHAR:
         INPUT SENDBUF, RAM_D_Port
@@ -442,6 +451,24 @@ TXD_STOP:
         ; If BYTECNT_TXD > 0, remain in start state
         LOAD TXDSTATE, TXDSTART
         JUMP NZ, TXD_RET
+        ; TODO : workaround; better way to keep track of over/underflows
+        ; but then the VHDL part has to know which part of the memory is reserved
+        ; for variables...
+        ; Initialize ADDR_RXD in RAM (01 & 00)
+        ; BEGIN
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_A1_Port
+        LOAD   TMP,   ADDRL_RXD_ADDR
+        OUTPUT TMP,   RAM_A0_Port
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_D_Port
+        LOAD   TMP,   00
+        OUTPUT TMP,   RAM_A1_Port
+        LOAD   TMP,   ADDRH_RXD_ADDR
+        OUTPUT TMP,   RAM_A0_Port
+        LOAD   TMP,   01
+        OUTPUT TMP,   RAM_D_Port
+        ; END
         LOAD TXDSTATE, TXDIDLE
 TXD_RET:
         RETURN
